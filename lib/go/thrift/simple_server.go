@@ -20,10 +20,15 @@
 package thrift
 
 import (
+	"crypto/md5"
+	"fmt"
 	"log"
+	"math/rand"
 	"runtime/debug"
+	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 /*
@@ -150,6 +155,9 @@ func (p *TSimpleServer) SetForwardHeaders(headers []string) {
 
 func (p *TSimpleServer) innerAccept() (int32, error) {
 	client, err := p.serverTransport.Accept()
+	ts := time.Now()
+	uId := p.genMd5()
+	log.Println(fmt.Sprintf("zzf ttUid %s, after rev request: ts: %d", uId, ts.UnixMicro()))
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	closed := atomic.LoadInt32(&p.closed)
@@ -161,14 +169,23 @@ func (p *TSimpleServer) innerAccept() (int32, error) {
 	}
 	if client != nil {
 		p.wg.Add(1)
+		log.Println(fmt.Sprintf("zzf ttUid %s, before create goroutine: ts: %d", uId, ts.UnixMicro()))
 		go func() {
+			log.Println(fmt.Sprintf("zzf ttUid %s, running goroutine: ts: %d", uId, ts.UnixMicro()))
 			defer p.wg.Done()
 			if err := p.processRequests(client); err != nil {
 				log.Println("error processing request:", err)
 			}
+			log.Println(fmt.Sprintf("zzf ttUid %s, done goroutine: ts: %d", uId, ts.UnixMicro()))
 		}()
 	}
 	return 0, nil
+}
+
+func (p *TSimpleServer) genMd5() string {
+	tt := time.Now().UnixNano()
+	rand.Seed(tt)
+	return fmt.Sprintf("%s", md5.Sum([]byte(strconv.FormatInt(tt, 10))))
 }
 
 func (p *TSimpleServer) AcceptLoop() error {
