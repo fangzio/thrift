@@ -206,7 +206,8 @@ func (p *TSimpleServer) AcceptLoop() error {
 // zzf add start: test log
 func (p *TSimpleServer) initZLog() {
 	logFile := "/var/tmp/zzf.log"
-	p.fp, _ = os.OpenFile(logFile, os.O_CREATE|os.O_APPEND, 0755)
+	p.fp, _ = os.OpenFile(logFile, os.O_CREATE|os.O_APPEND, 0644)
+	p.logCh = make(chan string, 500)
 	go func() {
 		for {
 			select {
