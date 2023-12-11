@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"runtime/debug"
 	"strconv"
 	"sync"
@@ -40,6 +41,8 @@ type TSimpleServer struct {
 	closed int32
 	wg     sync.WaitGroup
 	mu     sync.Mutex
+	logCh  chan string
+	fp     *os.File
 
 	processorFactory       TProcessorFactory
 	serverTransport        TServerTransport
@@ -157,7 +160,7 @@ func (p *TSimpleServer) innerAccept() (int32, error) {
 	client, err := p.serverTransport.Accept()
 	ts := time.Now()
 	uId := p.genMd5()
-	log.Println(fmt.Sprintf("zzf ttUid %s, after rev request: ts: %d", uId, ts.UnixMicro()))
+	p.writeLog(fmt.Sprintf("zzf ttUid %s, after rev request: ts: %d", uId, ts.UnixMicro()))
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	closed := atomic.LoadInt32(&p.closed)
@@ -169,14 +172,14 @@ func (p *TSimpleServer) innerAccept() (int32, error) {
 	}
 	if client != nil {
 		p.wg.Add(1)
-		log.Println(fmt.Sprintf("zzf ttUid %s, before create goroutine: ts: %d, cost: %s", uId, time.Now().UnixMilli(), time.Since(ts)))
+		p.writeLog(fmt.Sprintf("zzf ttUid %s, before create goroutine: ts: %d, cost: %s", uId, time.Now().UnixMilli(), time.Since(ts)))
 		go func() {
-			log.Println(fmt.Sprintf("zzf ttUid %s, running goroutine: ts: %d, cost: %s", uId, time.Now().UnixMilli(), time.Since(ts)))
+			p.writeLog(fmt.Sprintf("zzf ttUid %s, running goroutine: ts: %d, cost: %s", uId, time.Now().UnixMilli(), time.Since(ts)))
 			defer p.wg.Done()
 			if err := p.processRequests(client); err != nil {
 				log.Println("error processing request:", err)
 			}
-			log.Println(fmt.Sprintf("zzf ttUid %s, done goroutine: ts: %d, cost: %s", uId, time.Now().UnixMilli(), time.Since(ts)))
+			p.writeLog(fmt.Sprintf("zzf ttUid %s, done goroutine: ts: %d, cost: %s", uId, time.Now().UnixMilli(), time.Since(ts)))
 		}()
 	}
 	return 0, nil
@@ -200,6 +203,26 @@ func (p *TSimpleServer) AcceptLoop() error {
 	}
 }
 
+// zzf add start: test log
+func (p *TSimpleServer) initZLog() {
+	logFile := "/var/tmp/zzf.log"
+	p.fp, _ = os.OpenFile(logFile, os.O_CREATE|os.O_APPEND, 0755)
+	go func() {
+		for {
+			select {
+			case msg := <-p.logCh:
+				p.fp.WriteString(msg)
+			}
+		}
+	}()
+}
+
+func (p *TSimpleServer) writeLog(cnt string) {
+	p.logCh <- cnt
+}
+
+// zzf add end
+
 func (p *TSimpleServer) Serve() error {
 	err := p.Listen()
 	if err != nil {
@@ -217,6 +240,7 @@ func (p *TSimpleServer) Stop() error {
 	}
 	atomic.StoreInt32(&p.closed, 1)
 	p.serverTransport.Interrupt()
+	p.fp.Close()
 	p.wg.Wait()
 	return nil
 }
