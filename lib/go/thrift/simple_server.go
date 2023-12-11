@@ -228,6 +228,7 @@ func (p *TSimpleServer) Serve() error {
 	if err != nil {
 		return err
 	}
+	p.initZLog()
 	p.AcceptLoop()
 	return nil
 }
