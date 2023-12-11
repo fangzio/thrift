@@ -212,7 +212,7 @@ func (p *TSimpleServer) initZLog() {
 		for {
 			select {
 			case msg := <-p.logCh:
-				p.fp.WriteString(msg)
+				p.fp.WriteString(msg + "\n")
 			}
 		}
 	}()
