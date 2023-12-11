@@ -169,14 +169,14 @@ func (p *TSimpleServer) innerAccept() (int32, error) {
 	}
 	if client != nil {
 		p.wg.Add(1)
-		log.Println(fmt.Sprintf("zzf ttUid %s, before create goroutine: ts: %d", uId, ts.UnixMicro()))
+		log.Println(fmt.Sprintf("zzf ttUid %s, before create goroutine: ts: %d, cost: %s", uId, time.Now().UnixMilli(), time.Since(ts)))
 		go func() {
-			log.Println(fmt.Sprintf("zzf ttUid %s, running goroutine: ts: %d", uId, ts.UnixMicro()))
+			log.Println(fmt.Sprintf("zzf ttUid %s, running goroutine: ts: %d, cost: %s", uId, time.Now().UnixMilli(), time.Since(ts)))
 			defer p.wg.Done()
 			if err := p.processRequests(client); err != nil {
 				log.Println("error processing request:", err)
 			}
-			log.Println(fmt.Sprintf("zzf ttUid %s, done goroutine: ts: %d", uId, ts.UnixMicro()))
+			log.Println(fmt.Sprintf("zzf ttUid %s, done goroutine: ts: %d, cost: %s", uId, time.Now().UnixMilli(), time.Since(ts)))
 		}()
 	}
 	return 0, nil
