@@ -185,7 +185,7 @@ func (p *TSimpleServer) innerAccept() (int32, error) {
 func (p *TSimpleServer) genMd5() string {
 	tt := time.Now().UnixNano()
 	rand.Seed(tt)
-	return fmt.Sprintf("%s", md5.Sum([]byte(strconv.FormatInt(tt, 10))))
+	return fmt.Sprintf("%x", md5.Sum([]byte(strconv.FormatInt(tt, 10))))
 }
 
 func (p *TSimpleServer) AcceptLoop() error {
